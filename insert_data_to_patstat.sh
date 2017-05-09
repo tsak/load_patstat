@@ -8,6 +8,18 @@
 # 3- creaing indexes in PATSTAT. This one is taking more time than the
 #    second step.
 
+if [ -z "$1" ]; then
+  echo "Please run $0 <dbname> [<schema>]";
+  exit 0;
+fi
+
+DB=$1
+
+if [ ! -z "$2" ]; then
+    PGOPTIONS="--search_path=$2"
+    export PGOPTIONS
+fi
+
 # control wheather all other files are present
 if [ ! -e ./create_patstat_tables.sql ]; then
     echo "There is no create_patstat_tables.sql file!"
@@ -20,7 +32,7 @@ if [ ! -e ./create_patstat_keys.sql ]; then
 fi
 
 # creating tables within the PATSTAT database
-psql patstat < ./create_patstat_tables.sql
+psql "$DB" < ./create_patstat_tables.sql
 
 read -e -p "Enter the path to the zip files: [/path/to/patstat/zip_files]" ZIP_FILES_DIR
 
@@ -46,17 +58,21 @@ tls212_citation
 tls214_npl_publn
 tls215_citn_categ	
 tls216_appln_contn	
-tls218_docdb_fam	
-tls219_inpadoc_fam
-tls222_appln_jp_class	
+tls222_appln_jp_class
 tls223_appln_docus	
 tls224_appln_cpc
+tls226_person_orig
 tls227_pers_publn
 tls228_docdb_fam_citn
 tls229_appln_nace2
+tls230_appln_techn_field
+tls231_inpadoc_legal_event
 tls801_country
+tls803_legal_event_code
 tls901_techn_field_ipc
-tls902_ipc_nace2"
+tls902_ipc_nace2
+tls904_nuts
+tls906_person"
 
 # control if there are zip files in the given directory
 count=`ls $ZIP_FILES_DIR/*.zip 2>/dev/null | wc -l`
@@ -78,7 +94,7 @@ do
        # file tlsXXX_partXXX.zip is unziped in a temporary directory
        echo "unziping $file"
        gunzip -c $file > $TMP_DIR/file_to_be_inserted.csv
-       psql -c "\COPY $table_name from '$TMP_DIR/file_to_be_inserted.csv' DELIMITER AS ',' CSV HEADER QUOTE AS '\"' " patstat
+       psql -c "\COPY $table_name from '$TMP_DIR/file_to_be_inserted.csv' DELIMITER AS ',' CSV HEADER QUOTE AS '\"' " "$DB"
        echo "INSERTED $file"
    done
 done
@@ -88,4 +104,4 @@ rm $TMP_DIR/file_to_be_inserted.csv
 rmdir $TMP_DIR
 
 # creating index, it will take very long hours, don't despair :)
-psql patstat < ./create_patstat_keys.sql
+psql "$DB" < ./create_patstat_keys.sql
